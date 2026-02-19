@@ -1,60 +1,91 @@
 const express = require('express');
-const axios = require('axios');
 const cors = require('cors');
-const bodyParser = require('body-parser');
-require('dotenv').config();
+const dotenv = require('dotenv');
+const fetch = require('node-fetch'); // Ensure you have node-fetch installed or use built-in fetch in Node 18+
+
+dotenv.config();
 
 const app = express();
+app.use(cors());
+app.use(express.json());
+
 const PORT = process.env.PORT || 3000;
 
-// Get your key from https://console.groq.com/keys
-const GROQ_API_KEY = process.env.GROQ_API_KEY || 'YOUR_GROQ_API_KEY_HERE';
+// Configuration for n8n Integration
+const N8N_SCRAPER_WEBHOOK = process.env.N8N_WEBHOOK_URL || 'YOUR_N8N_WEBHOOK_URL';
 
-app.use(cors());
-app.use(bodyParser.json());
+/**
+ * FEATURE: Hybrid Intelligence Logic
+ * This function triggers the n8n Scraper for Real-Time Trends.
+ * If n8n is offline or the request fails, it returns null, 
+ * allowing the server to fall back to standard AI generation.
+ */
+async function getRealTimeTrends(query) {
+    if (!N8N_SCRAPER_WEBHOOK || N8N_SCRAPER_WEBHOOK === 'YOUR_N8N_WEBHOOK_URL') {
+        return null;
+    }
+    try {
+        const response = await fetch(N8N_SCRAPER_WEBHOOK, {
+            method: 'POST',
+            body: JSON.stringify({ q: query, action: 'get_trends' }),
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 5000 // 5-second timeout to prevent UI lag
+        });
+        return await response.json();
+    } catch (error) {
+        console.error("⚠️ n8n Scraper offline. Falling back to internal AI logic...");
+        return null;
+    }
+}
 
-app.post('/analyze', async (req, res) => {
-    const { topic } = req.body;
-    if (!topic) return res.status(400).json({ error: 'Topic is required' });
+/**
+ * POST /api/analyze
+ * Main endpoint for niche discovery
+ */
+app.post('/api/analyze', async (req, res) => {
+    const { category } = req.body;
+
+    if (!category) {
+        return res.status(400).json({ error: 'Category is required' });
+    }
 
     try {
-        const prompt = `Given the topic "${topic}", brainstorm 5 product ideas with 5 keywords each, plus 3 general keywords. Output strictly as JSON with keys: "products_services" (list of {name, keywords}) and "general_keywords" (list of strings).`;
+        // 1. Attempt to fetch real-time trends from n8n
+        const realTimeData = await getRealTimeTrends(category);
 
-        const response = await axios.post(
-            'https://api.groq.com/openai/v1/chat/completions',
-            {
-                model: "llama-3.3-70b-versatile",
-                messages: [
-                    { role: "system", content: "You are a helpful assistant that only outputs valid JSON." },
-                    { role: "user", content: prompt }
-                ],
-                response_format: { type: "json_object" }
-            },
-            {
-                headers: {
-                    'Authorization': `Bearer ${GROQ_API_KEY}`,
-                    'Content-Type': 'application/json'
-                }
-            }
-        );
+        // 2. Prepare the AI Prompt
+        // We inject real-time data if available to "prime" the AI
+        const trendContext = realTimeData ? `Current trending topics: ${JSON.stringify(realTimeData)}` : "No real-time data available.";
 
-        // Groq stores the result in choices[0].message.content
-        const aiRawResponse = response.data.choices[0].message.content;
-        const aiResult = JSON.parse(aiRawResponse);
-        
-        // Manual enrichment
-        aiResult.backlink_opportunity_types = ["Guest Post Blogs", "Industry Forums", "Review Sites"];
+        const prompt = `
+            Analyze the niche: ${category}. 
+            ${trendContext}
+            Provide 5 highly profitable sub-niches in strict JSON format.
+            Include: name, profitability_score (1-100), search_volume, competition (Low/Med/High), and monetization_ideas.
+        `;
 
-        res.json(aiResult);
+        // 3. Call Primary AI (Example using Groq/Gemini logic)
+        // Note: Replace this with your specific Groq/Gemini SDK implementation
+        const aiResponse = await callAIProvider(prompt); 
+
+        res.json({
+            source: realTimeData ? 'Hybrid (AI + Real-time Scraper)' : 'Internal AI Engine',
+            data: aiResponse,
+            trends: realTimeData
+        });
 
     } catch (error) {
-        console.error("Error:", error.response?.data || error.message);
-        res.status(500).json({ error: 'AI processing failed' });
+        res.status(500).json({ error: 'Analysis failed', details: error.message });
     }
 });
 
-app.get('/', (req, res) => {
-    res.send('Server is up and running! Ready to analyze topics.');
-});
+// Mock AI Provider Function (Placeholder for your specific SDK logic)
+async function callAIProvider(prompt) {
+    // Your Groq or Gemini SDK call goes here
+    return { message: "AI Analysis Complete", prompt_received: prompt };
+}
 
-app.listen(PORT, () => console.log(`✅ Server running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+    console.log(`🚀 NicheLogic Server running on http://localhost:${PORT}`);
+    console.log(`📡 n8n Integration Status: ${N8N_SCRAPER_WEBHOOK !== 'YOUR_N8N_WEBHOOK_URL' ? 'Active' : 'Pending Config'}`);
+});
