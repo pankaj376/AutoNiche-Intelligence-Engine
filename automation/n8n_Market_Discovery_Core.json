@@ -1,0 +1,79 @@
+{
+  "name": "n8n_Market_Discovery_Core",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "niche-api",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook Entry",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"body\"][\"action\"]}}",
+              "value2": "analyze_niches"
+            }
+          ]
+        }
+      },
+      "name": "Route Action",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [350, 300]
+    },
+    {
+      "parameters": {
+        "model": "gemini-pro",
+        "prompt": "Analyze this niche: {{$json[\"body\"][\"category\"]}}. Return a JSON list of 5 sub-niches with score, volume, and competition."
+      },
+      "name": "AI Niche Analysis",
+      "type": "n8n-nodes-base.googleGemini",
+      "typeVersion": 1,
+      "position": [600, 200]
+    },
+    {
+      "parameters": {
+        "model": "gemini-pro",
+        "prompt": "Write a 500-word SEO blog post about {{$json[\"body\"][\"niche\"]}}. Format in HTML."
+      },
+      "name": "AI Blog Generation",
+      "type": "n8n-nodes-base.googleGemini",
+      "typeVersion": 1,
+      "position": [600, 450]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Respond to UI",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 320]
+    }
+  ],
+  "connections": {
+    "Webhook Entry": {
+      "main": [[{ "node": "Route Action", "type": "main", "index": 0 }]]
+    },
+    "Route Action": {
+      "main": [
+        [{ "node": "AI Niche Analysis", "type": "main", "index": 0 }],
+        [{ "node": "AI Blog Generation", "type": "main", "index": 0 }]
+      ]
+    },
+    "AI Niche Analysis": {
+      "main": [[{ "node": "Respond to UI", "type": "main", "index": 0 }]]
+    },
+    "AI Blog Generation": {
+      "main": [[{ "node": "Respond to UI", "type": "main", "index": 0 }]]
+    }
+  }
+}
