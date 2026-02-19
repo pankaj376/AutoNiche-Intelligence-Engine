@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AutoNiche Phase 2</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input { width: 80%; padding: 10px; margin-bottom: 10px; }
+        button { padding: 10px 20px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        .result-box { margin-top: 20px; padding: 15px; border-top: 1px solid #ddd; }
+        .section { margin-bottom: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🚀 AutoNiche Brainstormer</h2>
+        <input type="text" id="topicInput" placeholder="Enter a niche (e.g., Eco-friendly gardening)">
+        <button onclick="analyzeTopic()">Analyze</button>
+
+        <div id="output" class="result-box"></div>
+    </div>
+
+    <script>
+        async function analyzeTopic() {
+            const topic = document.getElementById('topicInput').value;
+            const output = document.getElementById('output');
+            output.innerHTML = "⏳ Thinking...";
+
+            try {
+                const res = await fetch('http://localhost:3000/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic })
+                });
+
+                const data = await res.json();
+
+                // FIX: Use || [] to prevent "Cannot read properties of undefined (reading 'map')"
+                const products = data.products_services || [];
+                const genKeywords = data.general_keywords || [];
+                const backlinks = data.backlink_opportunity_types || [];
+
+                output.innerHTML = `
+                    <div class="section">
+                        <h3>📦 Suggested Products</h3>
+                        <ul>
+                            ${products.map(p => `
+                                <li><strong>${p.name || 'Product'}</strong>: ${(p.keywords || []).join(", ")}</li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    <div class="section">
+                        <h3>🔑 General Keywords</h3>
+                        <p>${genKeywords.join(", ") || "No keywords found."}</p>
+                    </div>
+                    <div class="section">
+                        <h3>🔗 Backlink Strategy</h3>
+                        <ul>
+                            ${backlinks.map(type => `<li>${type}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            } catch (err) {
+                output.innerHTML = "❌ Error connecting to server. Is node server.js running?";
+                console.error(err);
+            }
+        }
+    </script>
+</body>
+</html>
